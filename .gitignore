@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Freqtrade
+user_data/backtest_results/
+user_data/data/
+user_data/logs/
+user_data/tradesv3.sqlite
+user_data/user_data/
