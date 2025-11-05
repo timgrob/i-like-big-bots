@@ -61,7 +61,7 @@ class SlopeStrategy(IStrategy):
     INTERFACE_VERSION = 3
 
     # Optimal timeframe for the strategy.
-    timeframe = "1h"
+    timeframe = "4h"
 
     # Can this strategy go short?
     can_short: bool = True
@@ -118,6 +118,9 @@ class SlopeStrategy(IStrategy):
             }
         }
 
+    def leverage(self, pair: str, current_time: datetime, current_rate: float, proposed_leverage: float, max_leverage: float, entry_tag: str | None, side: str, **kwargs) -> float:
+        return 5.0
+        
     def informative_pairs(self):
         """
         Define additional, informative pair/interval combinations to be cached from the exchange.
