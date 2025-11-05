@@ -1,0 +1,10 @@
+[project]
+name = "i-like-big-bots"
+version = "0.1.0"
+description = "Trading strategies based on freqtrade.io"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "freqtrade>=2025.9.1",
+    "pykalman>=0.10.2",
+]
