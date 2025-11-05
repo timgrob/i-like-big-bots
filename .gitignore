@@ -98,7 +98,7 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
-#uv.lock
+uv.lock
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
@@ -173,7 +173,7 @@ cython_debug/
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+.idea/
 
 # Abstra
 # Abstra is an AI-powered process automation framework.
@@ -187,6 +187,10 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #  you could uncomment the following to ignore the entire vscode folder
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Ruff stuff:
 .ruff_cache/
@@ -206,9 +210,27 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Freqtrade
+# Freqtrade dry-run database
+user_data/tradesv3.dryrun.sqlite
+user_data/tradesv3.dryrun.sqlite-shm
+user_data/tradesv3.dryrun.sqlite-wal
+
+# All dry-run related files
+*.dryrun.sqlite*
+
+# Freqtrade user data
 user_data/backtest_results/
 user_data/data/
+user_data/plot/
 user_data/logs/
-user_data/tradesv3.sqlite
-user_data/user_data/
+
+# Freqtrade databases
+user_data/*.sqlite
+user_data/*.sqlite-shm
+user_data/*.sqlite-wal
+
+# Hyperopt results (optional)
+user_data/hyperopt_results/
+
+# State files
+user_data/.state/
