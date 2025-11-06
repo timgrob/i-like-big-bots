@@ -71,7 +71,6 @@ docs/_build/
 target/
 
 # Virtual environment
-.env
 .venv/
 venv/
 
@@ -87,3 +86,7 @@ venv/
 
 # VS Code
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
