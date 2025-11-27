@@ -54,6 +54,7 @@ class CrossoverStrategy(IStrategy):
     You should keep:
     - timeframe, minimal_roi, stoploss, trailing_*
     """
+
     # Strategy interface version - allow new iterations of the strategy interface.
     # Check the documentation or the Sample strategy to get the latest version.
     INTERFACE_VERSION = 3
@@ -66,11 +67,7 @@ class CrossoverStrategy(IStrategy):
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
-    minimal_roi = {
-        "60": 0.01,
-        "30": 0.02,
-        "0": 0.04
-    }
+    minimal_roi = {"60": 0.01, "30": 0.02, "0": 0.04}
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
@@ -91,23 +88,18 @@ class CrossoverStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 30
+    startup_candle_count: int = 50
 
-    # Strategy parameters
-    buy_rsi = IntParameter(10, 40, default=30, space="buy")
-    sell_rsi = IntParameter(60, 90, default=70, space="sell")# Optional order type mapping.
     order_types = {
         "entry": "limit",
         "exit": "limit",
         "stoploss": "market",
-        "stoploss_on_exchange": False
+        "stoploss_on_exchange": False,
     }
 
     # Optional order time in force.
-    order_time_in_force = {
-        "entry": "GTC",
-        "exit": "GTC"
-    }
+    order_time_in_force = {"entry": "GTC", "exit": "GTC"}
+
     @property
     def plot_config(self):
         return {
@@ -116,7 +108,7 @@ class CrossoverStrategy(IStrategy):
                 "ema2": {"color": "red"},
                 "ema8": {"color": "blue"},
             },
-            "subplots": {}
+            "subplots": {},
         }
 
     def informative_pairs(self):
@@ -362,17 +354,19 @@ class CrossoverStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                (qtpylib.crossed_above(dataframe["ema2"], dataframe["ema8"])) &
-                (dataframe["volume"] > 0)
+                (qtpylib.crossed_above(dataframe["ema2"], dataframe["ema8"]))
+                & (dataframe["volume"] > 0)
             ),
-            "enter_long"] = 1
-        
+            "enter_long",
+        ] = 1
+
         dataframe.loc[
             (
-                (qtpylib.crossed_below(dataframe["ema2"], dataframe["ema8"])) &
-                (dataframe['volume'] > 0)
+                (qtpylib.crossed_below(dataframe["ema2"], dataframe["ema8"]))
+                & (dataframe["volume"] > 0)
             ),
-            'enter_short'] = 1
+            "enter_short",
+        ] = 1
 
         return dataframe
 
@@ -385,16 +379,18 @@ class CrossoverStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                (qtpylib.crossed_below(dataframe["ema2"], dataframe["ema8"])) &
-                (dataframe['volume'] > 0)
+                (qtpylib.crossed_below(dataframe["ema2"], dataframe["ema8"]))
+                & (dataframe["volume"] > 0)
             ),
-            "exit_long"] = 1
-        
+            "exit_long",
+        ] = 1
+
         dataframe.loc[
             (
-                (qtpylib.crossed_above(dataframe["ema2"], dataframe["ema8"])) &
-                (dataframe['volume'] > 0)
+                (qtpylib.crossed_above(dataframe["ema2"], dataframe["ema8"]))
+                & (dataframe["volume"] > 0)
             ),
-            'exit_short'] = 1
-        
+            "exit_short",
+        ] = 1
+
         return dataframe

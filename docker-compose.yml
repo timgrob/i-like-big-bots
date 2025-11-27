@@ -1,5 +1,6 @@
 services:
   freqtrade:
+    image: timgrob/ilikebigbots:slope
     # image: freqtradeorg/freqtrade:stable
     # image: freqtradeorg/freqtrade:develop
     # Use plotting image
@@ -14,11 +15,9 @@ services:
     #           count: 1
     #           capabilities: [gpu]
     # Build step - only needed when additional dependencies are needed
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: timgrob/ilikebigbots:latest
-    container_name: ilikebigbots
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile    
     restart: unless-stopped
     volumes:
       - "./user_data:/freqtrade/user_data"
@@ -27,10 +26,13 @@ services:
     # for more information.
     ports:
       - "127.0.0.1:8080:8080"
+    env_file:
+      - ".env"
     # Default command used when running `docker compose up`
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
-      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
       --config /freqtrade/user_data/config.json
-      --strategy SlopeStrategy
+      --strategy EmaSlopeStrategy
+      --loglevel DEBUG
+

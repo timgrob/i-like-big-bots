@@ -8,8 +8,7 @@ def main():
             "--config",
             "user_data/config.json",
             "--strategy",
-            "SampleStrategy",
-            "--dry-run",
+            "EmaSlopeStrategy",  # add your own strategy name here
         ]
     )
 

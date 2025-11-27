@@ -34,12 +34,10 @@ from freqtrade.strategy import (
 # --------------------------------
 # Add your lib to import here
 import talib.abstract as ta
-from technical import qtpylib
 from pykalman import KalmanFilter
 
 
-
-class SlopeStrategy(IStrategy):
+class EmaSlopeStrategy(IStrategy):
     """
     This is a strategy template to get you started.
     More information in https://www.freqtrade.io/en/latest/strategy-customization/
@@ -56,37 +54,30 @@ class SlopeStrategy(IStrategy):
     You should keep:
     - timeframe, minimal_roi, stoploss, trailing_*
     """
+
     # Strategy interface version - allow new iterations of the strategy interface.
     # Check the documentation or the Sample strategy to get the latest version.
     INTERFACE_VERSION = 3
 
     # Optimal timeframe for the strategy.
-    timeframe = "4h"
+    timeframe = "12h"
 
     # Can this strategy go short?
     can_short: bool = True
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
-    # minimal_roi = {
-    #     "60": 0.01,
-    #     "30": 0.02,
-    #     "0": 0.04
-    # }
-
-    minimal_roi = {
-        "0": 0
-    }
+    minimal_roi = {"60": 0.01, "30": 0.02, "0": 0.04}
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.03
+    stoploss = -0.05
 
     # Trailing stoploss
     trailing_stop = True
     # trailing_only_offset_is_reached = False
-    trailing_stop_positive = 0.01
-    trailing_stop_positive_offset = 0.05  # Disabled / not configured
+    # trailing_stop_positive = 0.01
+    # trailing_stop_positive_offset = 0.05  # Disabled / not configured
 
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
@@ -97,7 +88,32 @@ class SlopeStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 30
+    startup_candle_count: int = 40
+
+    # Optional order type mapping.
+    order_types = {
+        "entry": "limit",
+        "exit": "limit",
+        "stoploss": "market",
+        "stoploss_on_exchange": False,
+    }
+
+    # Optional order time in force.
+    order_time_in_force = {"entry": "GTC", "exit": "GTC"}
+
+    # Return on investment parameters
+    enter_long_ror = DecimalParameter(
+        low=-1, high=1, default=0.0, space="buy", optimize=True, load=True
+    )
+    exit_long_ror = DecimalParameter(
+        low=-1, high=1, default=0.0, space="sell", optimize=True, load=True
+    )
+    enter_short_ror = DecimalParameter(
+        low=-1, high=1, default=0.0, space="sell", optimize=True, load=True
+    )
+    exit_short_ror = DecimalParameter(
+        low=-1, high=1, default=0.0, space="buy", optimize=True, load=True
+    )
 
     @property
     def plot_config(self):
@@ -105,22 +121,33 @@ class SlopeStrategy(IStrategy):
             # Main plot indicators (Moving averages, ...)
             "main_plot": {
                 "ema8": {"color": "blue"},
-                "kalman_ema8": {"color": "red"},
+                "kalman": {"color": "red"},
             },
             "subplots": {
                 # Subplots - each dict defines one additional plot
-                "slope_kalman_ema8": {
-                    "slope_kalman_ema8": {"color": "blue"},
-                },
-                "slope_ema8": {
-                    "slope_ema8": {"color": "red"},
+                "returns": {
+                    "ror_ema8": {"color": "blue"},
+                    "ror_kalman": {"color": "red"},
                 }
-            }
+            },
         }
 
-    def leverage(self, pair: str, current_time: datetime, current_rate: float, proposed_leverage: float, max_leverage: float, entry_tag: str | None, side: str, **kwargs) -> float:
+    def version(self) -> str | None:
+        return super().version()
+
+    def leverage(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_leverage: float,
+        max_leverage: float,
+        entry_tag: str | None,
+        side: str,
+        **kwargs,
+    ) -> float:
         return 5.0
-        
+
     def informative_pairs(self):
         """
         Define additional, informative pair/interval combinations to be cached from the exchange.
@@ -275,13 +302,21 @@ class SlopeStrategy(IStrategy):
         # dataframe["sma100"] = ta.SMA(dataframe, timeperiod=100)
 
         # # Kalman Filter
-        kf = KalmanFilter()
-        kf = kf.em(dataframe["ema8"].bfill())
-        dataframe["kalman_ema8"], _ = kf.smooth(dataframe["close"].bfill().values)
+        close_prices = dataframe["close"].bfill().values.astype(float)
+        kf = KalmanFilter(
+            transition_matrices=[[1]],
+            observation_matrices=[[1]],
+            initial_state_mean=close_prices[0],
+            initial_state_covariance=1,
+            observation_covariance=1,
+            transition_covariance=0.01,
+        )
+        dataframe["kalman"], _ = kf.smooth(close_prices)
 
-        # # Slope 
-        dataframe["slope_ema8"] = dataframe["ema8"].diff()
-        dataframe["slope_kalman_ema8"] = dataframe["kalman_ema8"].diff()
+        # # Rate of return
+        dataframe["ror_close"] = dataframe["close"].pct_change()
+        dataframe["ror_ema8"] = dataframe["ema8"].pct_change()
+        dataframe["ror_kalman"] = dataframe["kalman"].pct_change()
 
         # Cycle Indicator
         # ------------------------------------
@@ -364,26 +399,36 @@ class SlopeStrategy(IStrategy):
         :param metadata: Additional information, like the currently traded pair
         :return: DataFrame with entry columns populated
         """
-        long_threshold = 0.1
-        short_threshold = -0.1
 
         dataframe.loc[
             (
-                (dataframe["slope_kalman_ema8"] > 0.1) &
-                (dataframe["slope_kalman_ema8"].shift(1) > 0) &
-                (dataframe["slope_kalman_ema8"].shift(2) > 0) &
-                (dataframe["volume"] > 0)
+                (dataframe["ror_ema8"] > self.enter_long_ror.value)
+                # & (dataframe["ror_ema8"].shift(1) > 0)
+                # & (dataframe["ror_ema8"].shift(2) > 0)
+                & (dataframe["volume"] > 0)
             ),
-            "enter_long"] = 1
+            "enter_long",
+        ] = 1
+
+        # # Optional: for plotting, remove consecutive buy signals
+        # dataframe["enter_long"] = dataframe["enter_long"].mask(
+        #     dataframe["enter_long"].shift(1) == 1, 0
+        # )
 
         dataframe.loc[
             (
-                (dataframe["slope_kalman_ema8"] < -0.1) &
-                (dataframe["slope_kalman_ema8"].shift(1) < 0) &
-                (dataframe["slope_kalman_ema8"].shift(2) < 0) &
-                (dataframe["volume"] > 0)
+                (dataframe["ror_ema8"] < self.enter_short_ror.value)
+                # & (dataframe["ror_ema8"].shift(1) < 0)
+                # & (dataframe["ror_ema8"].shift(2) < 0)
+                & (dataframe["volume"] > 0)
             ),
-            "enter_short"] = 1
+            "enter_short",
+        ] = 1
+
+        # # Optional: for plotting, remove consecutive buy signals
+        # dataframe["enter_short"] = dataframe["enter_short"].mask(
+        #     dataframe["enter_short"].shift(1) == 1, 0
+        # )
 
         return dataframe
 
@@ -394,22 +439,35 @@ class SlopeStrategy(IStrategy):
         :param metadata: Additional information, like the currently traded pair
         :return: DataFrame with exit columns populated
         """
-        dataframe.loc[
-            (
-                ((dataframe["slope_kalman_ema8"] < 0) |
-                (dataframe["slope_kalman_ema8"].shift(1) < 0) |
-                (dataframe["slope_kalman_ema8"].shift(2) < 0)) &
-                (dataframe["volume"] > 0)
-            ),
-            "exit_long"] = 1
 
         dataframe.loc[
             (
-                ((dataframe["slope_kalman_ema8"] > 0) |
-                (dataframe["slope_kalman_ema8"].shift(1) > 0) |
-                (dataframe["slope_kalman_ema8"].shift(2) > 0)) &
-                (dataframe["volume"] > 0)
+                (dataframe["ror_ema8"] < self.exit_long_ror.value)
+                # & (dataframe["ror_ema8"].shift(1) < 0)
+                # & (dataframe["ror_ema8"].shift(2) < 0)
+                & (dataframe["volume"] > 0)
             ),
-            "exit_short"] = 1
-        
+            "exit_long",
+        ] = 1
+
+        # # Optional: for plotting, remove consecutive buy signals
+        # dataframe["exit_long"] = dataframe["exit_long"].mask(
+        #     dataframe["exit_long"].shift(1) == 1, 0
+        # )
+
+        dataframe.loc[
+            (
+                (dataframe["ror_ema8"] > self.exit_short_ror.value)
+                # & (dataframe["ror_ema8"].shift(1) > 0)
+                # & (dataframe["ror_ema8"].shift(2) > 0)
+                & (dataframe["volume"] > 0)
+            ),
+            "exit_short",
+        ] = 1
+
+        # # Optional: for plotting, remove consecutive buy signals
+        # dataframe["exit_short"] = dataframe["exit_short"].mask(
+        #     dataframe["exit_short"].shift(1) == 1, 0
+        # )
+
         return dataframe

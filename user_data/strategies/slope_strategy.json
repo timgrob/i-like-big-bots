@@ -1,0 +1,33 @@
+{
+  "strategy_name": "SlopeStrategy",
+  "params": {
+    "trailing": {
+      "trailing_stop": true,
+      "trailing_stop_positive": 0.34,
+      "trailing_stop_positive_offset": 0.342,
+      "trailing_only_offset_is_reached": true
+    },
+    "max_open_trades": {
+      "max_open_trades": 1
+    },
+    "buy": {
+      "enter_long_ror": 0.84,
+      "exit_short_ror": 0.256
+    },
+    "sell": {
+      "enter_short_ror": 0.083,
+      "exit_long_ror": -0.372
+    },
+    "roi": {
+      "0": 0.323,
+      "1557": 0.156,
+      "4090": 0.048,
+      "9722": 0
+    },
+    "stoploss": {
+      "stoploss": -0.182
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2025-11-26 22:45:14.380999+00:00"
+}

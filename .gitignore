@@ -225,9 +225,9 @@ user_data/plot/
 user_data/logs/
 
 # Freqtrade databases
-user_data/*.sqlite
-user_data/*.sqlite-shm
-user_data/*.sqlite-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 # Hyperopt results (optional)
 user_data/hyperopt_results/
