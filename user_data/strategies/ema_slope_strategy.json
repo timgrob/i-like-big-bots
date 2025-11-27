@@ -3,31 +3,31 @@
   "params": {
     "trailing": {
       "trailing_stop": true,
-      "trailing_stop_positive": 0.34,
-      "trailing_stop_positive_offset": 0.342,
-      "trailing_only_offset_is_reached": true
+      "trailing_stop_positive": null,
+      "trailing_stop_positive_offset": 0.0,
+      "trailing_only_offset_is_reached": false
     },
     "max_open_trades": {
       "max_open_trades": 1
     },
     "buy": {
-      "enter_long_ror": 0.84,
-      "exit_short_ror": 0.256
+      "enter_long_ror": 0.005,
+      "exit_short_ror": 0.975
     },
     "sell": {
-      "enter_short_ror": 0.083,
-      "exit_long_ror": -0.372
+      "enter_short_ror": -0.008,
+      "exit_long_ror": -0.548
     },
     "roi": {
-      "0": 0.323,
-      "1557": 0.156,
-      "4090": 0.048,
-      "9722": 0
+      "0": 0.286,
+      "3577": 0.102,
+      "10557": 0.04,
+      "21614": 0
     },
     "stoploss": {
-      "stoploss": -0.182
+      "stoploss": -0.314
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2025-11-26 22:45:14.380999+00:00"
+  "export_time": "2025-11-27 10:11:05.669546+00:00"
 }

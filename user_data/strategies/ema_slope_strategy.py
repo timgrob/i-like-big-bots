@@ -103,16 +103,16 @@ class EmaSlopeStrategy(IStrategy):
 
     # Return on investment parameters
     enter_long_ror = DecimalParameter(
-        low=-1, high=1, default=0.0, space="buy", optimize=True, load=True
+        low=0, high=1, default=0.0, space="buy", optimize=True, load=True
     )
     exit_long_ror = DecimalParameter(
-        low=-1, high=1, default=0.0, space="sell", optimize=True, load=True
+        low=-1, high=0, default=0.0, space="sell", optimize=True, load=True
     )
     enter_short_ror = DecimalParameter(
-        low=-1, high=1, default=0.0, space="sell", optimize=True, load=True
+        low=-1, high=0, default=0.0, space="sell", optimize=True, load=True
     )
     exit_short_ror = DecimalParameter(
-        low=-1, high=1, default=0.0, space="buy", optimize=True, load=True
+        low=0, high=1, default=0.0, space="buy", optimize=True, load=True
     )
 
     @property
