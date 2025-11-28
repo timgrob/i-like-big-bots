@@ -60,7 +60,7 @@ class KalmanSlopeStrategy(IStrategy):
     INTERFACE_VERSION = 3
 
     # Optimal timeframe for the strategy.
-    timeframe = "12h"
+    timeframe = "15m"
 
     # Can this strategy go short?
     can_short: bool = True
@@ -88,7 +88,7 @@ class KalmanSlopeStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 40
+    startup_candle_count: int = 20
 
     # Optional order type mapping.
     order_types = {

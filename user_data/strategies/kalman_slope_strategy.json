@@ -12,22 +12,22 @@
     },
     "buy": {
       "enter_long_ror": 0.0,
-      "exit_short_ror": 0.7
+      "exit_short_ror": 0.0
     },
     "sell": {
       "enter_short_ror": 0.0,
-      "exit_long_ror": -0.3
+      "exit_long_ror": 0.0
     },
     "roi": {
-      "0": 0.275,
-      "2939": 0.154,
-      "5649": 0.043,
-      "9856": 0
+      "0": 0.072,
+      "30": 0.055,
+      "75": 0.027,
+      "390": 0
     },
     "stoploss": {
-      "stoploss": -0.306
+      "stoploss": -0.278
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2025-11-27 11:05:32.929709+00:00"
+  "export_time": "2025-11-28 13:56:01.971823+00:00"
 }
