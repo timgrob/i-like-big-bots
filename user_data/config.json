@@ -7,7 +7,7 @@
     "fiat_display_currency": "USD",
     "dry_run": false,
     "dry_run_wallet": 31.4,
-    "cancel_open_orders_on_exit": false,
+    "cancel_open_orders_on_exit": true,
     "trading_mode": "futures",
     "margin_mode": "isolated",
     "unfilledtimeout": {
