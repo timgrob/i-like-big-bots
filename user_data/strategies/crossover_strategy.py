@@ -88,7 +88,7 @@ class CrossoverStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 50
+    startup_candle_count: int = 200
 
     order_types = {
         "entry": "limit",
@@ -99,6 +99,13 @@ class CrossoverStrategy(IStrategy):
 
     # Optional order time in force.
     order_time_in_force = {"entry": "GTC", "exit": "GTC"}
+
+    fast_ema = IntParameter(
+        low=2, high=50, default=2, space="buy", optimize=True, load=True
+    )
+    slow_ema = IntParameter(
+        low=8, high=200, default=2, space="buy", optimize=True, load=True
+    )
 
     @property
     def plot_config(self):
@@ -248,10 +255,10 @@ class CrossoverStrategy(IStrategy):
         # )
 
         # # EMA - Exponential Moving Average
-        dataframe["ema2"] = ta.EMA(dataframe, timeperiod=2)
+        # dataframe["ema2"] = ta.EMA(dataframe, timeperiod=2)
         # dataframe["ema3"] = ta.EMA(dataframe, timeperiod=3)
         # dataframe["ema5"] = ta.EMA(dataframe, timeperiod=5)
-        dataframe["ema8"] = ta.EMA(dataframe, timeperiod=8)
+        # dataframe["ema8"] = ta.EMA(dataframe, timeperiod=8)
         # dataframe["ema10"] = ta.EMA(dataframe, timeperiod=10)
         # dataframe["ema21"] = ta.EMA(dataframe, timeperiod=21)
         # dataframe["ema50"] = ta.EMA(dataframe, timeperiod=50)
@@ -331,17 +338,8 @@ class CrossoverStrategy(IStrategy):
         # dataframe["ha_close"] = heikinashi["close"]
         # dataframe["ha_high"] = heikinashi["high"]
         # dataframe["ha_low"] = heikinashi["low"]
-
-        # Retrieve best bid and best ask from the orderbook
-        # ------------------------------------
-        """
-        # first check if dataprovider is available
-        if self.dp:
-            if self.dp.runmode.value in ("live", "dry_run"):
-                ob = self.dp.orderbook(metadata["pair"], 1)
-                dataframe["best_bid"] = ob["bids"][0][0]
-                dataframe["best_ask"] = ob["asks"][0][0]
-        """
+        for val in self.fast_ema.range:
+            dataframe[f"ema_fast_{val}"] = ta.EMA(dataframe, timeperiod=5)
 
         return dataframe
 
