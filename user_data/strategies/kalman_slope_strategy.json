@@ -1,6 +1,15 @@
 {
   "strategy_name": "KalmanSlopeStrategy",
   "params": {
+    "roi": {
+      "0": 0.072,
+      "30": 0.055,
+      "75": 0.027,
+      "390": 0
+    },
+    "stoploss": {
+      "stoploss": -0.278
+    },
     "trailing": {
       "trailing_stop": true,
       "trailing_stop_positive": null,
@@ -10,24 +19,15 @@
     "max_open_trades": {
       "max_open_trades": 1
     },
-    "buy": {
+    "enter": {
       "enter_long_ror": 0.0,
-      "exit_short_ror": 0.0
+      "enter_short_ror": 0.0
     },
-    "sell": {
-      "enter_short_ror": 0.0,
-      "exit_long_ror": 0.0
-    },
-    "roi": {
-      "0": 0.072,
-      "30": 0.055,
-      "75": 0.027,
-      "390": 0
-    },
-    "stoploss": {
-      "stoploss": -0.278
+    "exit": {
+      "exit_long_ror": -0.5,
+      "exit_short_ror": 0.2
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2025-11-28 13:56:01.971823+00:00"
+  "export_time": "2025-12-02 11:56:42.399628+00:00"
 }

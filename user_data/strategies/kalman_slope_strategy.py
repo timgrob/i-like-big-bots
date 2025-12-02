@@ -86,16 +86,16 @@ class KalmanSlopeStrategy(IStrategy):
 
     # Return on investment parameters
     enter_long_ror = DecimalParameter(
-        low=0, high=1, default=0.0, decimals=1, space="buy", optimize=True, load=True
+        low=0, high=1, default=0.0, decimals=1, space="enter", optimize=True, load=True
     )
     exit_long_ror = DecimalParameter(
-        low=-1, high=0, default=0.0, decimals=1, space="sell", optimize=True, load=True
+        low=-1, high=0, default=0.0, decimals=1, space="exit", optimize=True, load=True
     )
     enter_short_ror = DecimalParameter(
-        low=-1, high=0, default=0.0, decimals=1, space="sell", optimize=True, load=True
+        low=-1, high=0, default=0.0, decimals=1, space="enter", optimize=True, load=True
     )
     exit_short_ror = DecimalParameter(
-        low=0, high=1, default=0.0, decimals=1, space="buy", optimize=True, load=True
+        low=0, high=1, default=0.0, decimals=1, space="exit", optimize=True, load=True
     )
 
     @property
@@ -153,7 +153,8 @@ class KalmanSlopeStrategy(IStrategy):
             observation_covariance=1,
             transition_covariance=0.01,
         )
-        dataframe["kalman"], _ = kf.smooth(close_prices)
+        filtered_state_means, _ = kf.filter(close_prices)
+        dataframe["kalman"] = filtered_state_means.flatten()
         dataframe["ror_kalman"] = dataframe["kalman"].pct_change()
 
         return dataframe
@@ -162,8 +163,8 @@ class KalmanSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (dataframe["ror_kalman"] > self.enter_long_ror.value)
-                & (dataframe["ror_ema8"].shift(1) > 0)
-                # & (dataframe["ror_ema8"].shift(2) > 0)
+                & (dataframe["ror_kalman"].shift(1) > 0)
+                # & (dataframe["ror_kalman"].shift(2) > 0)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long",
@@ -172,8 +173,8 @@ class KalmanSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (dataframe["ror_kalman"] < self.enter_short_ror.value)
-                & (dataframe["ror_ema8"].shift(1) < 0)
-                # & (dataframe["ror_ema8"].shift(2) < 0)
+                & (dataframe["ror_kalman"].shift(1) < 0)
+                # & (dataframe["ror_kalman"].shift(2) < 0)
                 & (dataframe["volume"] > 0)
             ),
             "enter_short",
@@ -185,8 +186,8 @@ class KalmanSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (dataframe["ror_kalman"] < self.exit_long_ror.value)
-                # & (dataframe["ror_ema8"].shift(1) < 0)
-                # & (dataframe["ror_ema8"].shift(2) < 0)
+                # & (dataframe["ror_kalman"].shift(1) < 0)
+                # & (dataframe["ror_kalman"].shift(2) < 0)
                 & (dataframe["volume"] > 0)
             ),
             "exit_long",
@@ -195,8 +196,8 @@ class KalmanSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (dataframe["ror_kalman"] > self.exit_short_ror.value)
-                # & (dataframe["ror_ema8"].shift(1) > 0)
-                # & (dataframe["ror_ema8"].shift(2) > 0)
+                # & (dataframe["ror_kalman"].shift(1) > 0)
+                # & (dataframe["ror_kalman"].shift(2) > 0)
                 & (dataframe["volume"] > 0)
             ),
             "exit_short",
