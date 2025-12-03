@@ -8,7 +8,7 @@
       "390": 0
     },
     "stoploss": {
-      "stoploss": -0.278
+      "stoploss": -0.1
     },
     "trailing": {
       "trailing_stop": true,
@@ -24,10 +24,10 @@
       "enter_short_ror": 0.0
     },
     "exit": {
-      "exit_long_ror": -0.5,
+      "exit_long_ror": -0.7,
       "exit_short_ror": 0.2
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2025-12-02 11:56:42.399628+00:00"
+  "export_time": "2025-12-02 19:00:07.843252+00:00"
 }
