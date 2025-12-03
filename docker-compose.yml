@@ -25,7 +25,7 @@ services:
     # Please read the https://www.freqtrade.io/en/stable/rest-api/ documentation
     # for more information.
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
     dns:
       - 8.8.8.8
       - 8.8.4.4
