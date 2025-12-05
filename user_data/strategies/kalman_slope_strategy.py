@@ -50,17 +50,17 @@ class KalmanSlopeStrategy(IStrategy):
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
-    minimal_roi = {"60": 0.01, "30": 0.02, "0": 0.04}
+    minimal_roi = {"60": 0.03, "30": 0.05, "0": 0.09}
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.05
+    stoploss = -0.03
 
     # Trailing stoploss
     trailing_stop = True
-    # trailing_only_offset_is_reached = False
-    # trailing_stop_positive = 0.01
-    # trailing_stop_positive_offset = 0.05  # Disabled / not configured
+    trailing_stop_positive = 0.02
+    trailing_stop_positive_offset = 0.03
+    trailing_only_offset_is_reached = True
 
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
@@ -68,7 +68,7 @@ class KalmanSlopeStrategy(IStrategy):
     # These values can be overridden in the config.
     use_exit_signal = True
     exit_profit_only = False
-    ignore_roi_if_entry_signal = False
+    ignore_roi_if_entry_signal = True
 
     # Number of candles the strategy requires before producing valid signals
     startup_candle_count: int = 20
@@ -84,18 +84,52 @@ class KalmanSlopeStrategy(IStrategy):
     # Optional order time in force.
     order_time_in_force = {"entry": "GTC", "exit": "GTC"}
 
+    # volume_thershold = DecimalParameter(
+    #     low=0.0,
+    #     high=50.0,
+    #     default=5e6,
+    #     decimals=2,
+    #     space="enter",
+    #     optimize=True,
+    #     load=True,
+    # )
+
     # Return on investment parameters
     enter_long_ror = DecimalParameter(
-        low=0, high=1, default=0.0, decimals=1, space="enter", optimize=True, load=True
+        low=0.0,
+        high=1.0,
+        default=0.0,
+        decimals=1,
+        space="enter",
+        optimize=True,
+        load=True,
     )
     exit_long_ror = DecimalParameter(
-        low=-1, high=0, default=0.0, decimals=1, space="exit", optimize=True, load=True
+        low=-1.0,
+        high=0.0,
+        default=0.0,
+        decimals=1,
+        space="exit",
+        optimize=True,
+        load=True,
     )
     enter_short_ror = DecimalParameter(
-        low=-1, high=0, default=0.0, decimals=1, space="enter", optimize=True, load=True
+        low=-1.0,
+        high=0.0,
+        default=0.0,
+        decimals=1,
+        space="enter",
+        optimize=True,
+        load=True,
     )
     exit_short_ror = DecimalParameter(
-        low=0, high=1, default=0.0, decimals=1, space="exit", optimize=True, load=True
+        low=0.0,
+        high=1.0,
+        default=0.0,
+        decimals=1,
+        space="exit",
+        optimize=True,
+        load=True,
     )
 
     @property
@@ -153,9 +187,15 @@ class KalmanSlopeStrategy(IStrategy):
             observation_covariance=1,
             transition_covariance=0.01,
         )
+        # dataframe["kalman"], _ = kf.smooth(close_prices)
         filtered_state_means, _ = kf.filter(close_prices)
         dataframe["kalman"] = filtered_state_means.flatten()
         dataframe["ror_kalman"] = dataframe["kalman"].pct_change()
+
+        # Past three volume mean
+        dataframe["volume_mean"] = np.mean(
+            [dataframe["volume"].shift(i) for i in range(3)]
+        )
 
         return dataframe
 
@@ -164,7 +204,7 @@ class KalmanSlopeStrategy(IStrategy):
             (
                 (dataframe["ror_kalman"] > self.enter_long_ror.value)
                 & (dataframe["ror_kalman"].shift(1) > 0)
-                # & (dataframe["ror_kalman"].shift(2) > 0)
+                # & (dataframe["volume_mean"] > self.volume_thershold.value)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long",
@@ -174,7 +214,7 @@ class KalmanSlopeStrategy(IStrategy):
             (
                 (dataframe["ror_kalman"] < self.enter_short_ror.value)
                 & (dataframe["ror_kalman"].shift(1) < 0)
-                # & (dataframe["ror_kalman"].shift(2) < 0)
+                # & (dataframe["volume_mean"] > self.volume_thershold.value)
                 & (dataframe["volume"] > 0)
             ),
             "enter_short",
@@ -187,7 +227,6 @@ class KalmanSlopeStrategy(IStrategy):
             (
                 (dataframe["ror_kalman"] < self.exit_long_ror.value)
                 # & (dataframe["ror_kalman"].shift(1) < 0)
-                # & (dataframe["ror_kalman"].shift(2) < 0)
                 & (dataframe["volume"] > 0)
             ),
             "exit_long",
@@ -196,8 +235,7 @@ class KalmanSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (dataframe["ror_kalman"] > self.exit_short_ror.value)
-                # & (dataframe["ror_kalman"].shift(1) > 0)
-                # & (dataframe["ror_kalman"].shift(2) > 0)
+                # & (dataframe["ror_kalman"].shift(1) > 0S)
                 & (dataframe["volume"] > 0)
             ),
             "exit_short",
