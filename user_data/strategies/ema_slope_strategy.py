@@ -34,7 +34,6 @@ from freqtrade.strategy import (
 # --------------------------------
 # Add your lib to import here
 import talib.abstract as ta
-from pykalman import KalmanFilter
 
 
 class EmaSlopeStrategy(IStrategy):
@@ -43,24 +42,24 @@ class EmaSlopeStrategy(IStrategy):
     INTERFACE_VERSION = 3
 
     # Optimal timeframe for the strategy.
-    timeframe = "12h"
+    timeframe = "15m"
 
     # Can this strategy go short?
     can_short: bool = True
 
     # Minimal ROI designed for the strategy.
     # This attribute will be overridden if the config file contains "minimal_roi".
-    minimal_roi = {"60": 0.01, "30": 0.02, "0": 0.04}
+    minimal_roi = {"0": 1.0}
 
     # Optimal stoploss designed for the strategy.
     # This attribute will be overridden if the config file contains "stoploss".
-    stoploss = -0.05
+    stoploss = -0.03
 
     # Trailing stoploss
     trailing_stop = True
-    # trailing_only_offset_is_reached = False
-    # trailing_stop_positive = 0.01
-    # trailing_stop_positive_offset = 0.05  # Disabled / not configured
+    trailing_stop_positive = 0.01
+    trailing_stop_positive_offset = 0.03
+    trailing_only_offset_is_reached = True
 
     # Run "populate_indicators()" only for new candle.
     process_only_new_candles = True
@@ -71,7 +70,7 @@ class EmaSlopeStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Number of candles the strategy requires before producing valid signals
-    startup_candle_count: int = 90
+    startup_candle_count: int = 8
 
     # Optional order type mapping.
     order_types = {
@@ -84,23 +83,96 @@ class EmaSlopeStrategy(IStrategy):
     # Optional order time in force.
     order_time_in_force = {"entry": "GTC", "exit": "GTC"}
 
-    # EMA timeperiod parameter
+    # EMA timeperiod strategy parameter
     ema_timeperiod = IntParameter(
         low=2, high=90, default=8, space="timeperiod", optimize=True, load=True
     )
 
-    # Return on investment parameters
+    # Volume threshold strategy parameter
+    volume_thershold = DecimalParameter(
+        low=0.0,
+        high=50.0,
+        default=5e6,
+        decimals=2,
+        space="enter",
+        optimize=True,
+        load=True,
+    )
+
+    # Return on investment strategy parameters
     enter_long_ror = DecimalParameter(
-        low=0, high=1, default=0.0, decimals=1, space="enter", optimize=True, load=True
+        low=0.0,
+        high=1.0,
+        default=0.002,
+        decimals=3,
+        space="enter",
+        optimize=True,
+        load=True,
     )
     exit_long_ror = DecimalParameter(
-        low=-1, high=0, default=0.0, decimals=1, space="exit", optimize=True, load=True
+        low=-1,
+        high=0.0,
+        default=0.0,
+        decimals=2,
+        space="exit",
+        optimize=True,
+        load=True,
     )
     enter_short_ror = DecimalParameter(
-        low=-1, high=0, default=0.0, decimals=1, space="enter", optimize=True, load=True
+        low=-1.0,
+        high=0.0,
+        default=-0.002,
+        decimals=3,
+        space="enter",
+        optimize=True,
+        load=True,
     )
     exit_short_ror = DecimalParameter(
-        low=0, high=1, default=0.0, decimals=1, space="exit", optimize=True, load=True
+        low=0.0,
+        high=1.0,
+        default=-0.0,
+        decimals=2,
+        space="exit",
+        optimize=True,
+        load=True,
+    )
+
+    # Aroon strategy parameters
+    enter_aroon_up = DecimalParameter(
+        low=0.0,
+        high=100.0,
+        default=90.0,
+        decimals=1,
+        space="enter",
+        optimize=True,
+        load=True,
+    )
+    enter_aroon_down = DecimalParameter(
+        low=0.0,
+        high=100.0,
+        default=90.0,
+        decimals=1,
+        space="enter",
+        optimize=True,
+        load=True,
+    )
+    exit_aroon_up = DecimalParameter(
+        low=0.0,
+        high=100.0,
+        default=60.0,
+        decimals=1,
+        space="exit",
+        optimize=True,
+        load=True,
+    )
+    exit_aroon_down = DecimalParameter(
+        low=0.0,
+        high=100.0,
+        default=60.0,
+        decimals=1,
+        space="exit",
+        optimize=True,
+        load=True,
     )
 
     @property
@@ -109,14 +181,16 @@ class EmaSlopeStrategy(IStrategy):
             # Main plot indicators (Moving averages, ...)
             "main_plot": {
                 "ema8": {"color": "blue"},
-                "kalman": {"color": "red"},
             },
             "subplots": {
                 # Subplots - each dict defines one additional plot
                 "returns": {
                     "ror_ema8": {"color": "blue"},
-                    "ror_kalman": {"color": "red"},
-                }
+                },
+                "aroon": {
+                    "aroonup": {"color": "orange"},
+                    "aroondown": {"color": "blue"},
+                },
             },
         }
 
@@ -150,10 +224,23 @@ class EmaSlopeStrategy(IStrategy):
         return []
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        # Aroon, Aroon Oscillator
+        aroon = ta.AROON(dataframe)
+        dataframe["aroonup"] = aroon["aroonup"]
+        dataframe["aroondown"] = aroon["aroondown"]
+
         # EMA - Parameter Range
         for val in self.ema_timeperiod.range:
             dataframe[f"ema{val}"] = ta.EMA(dataframe, timeperiod=val)
             dataframe[f"ror_ema{val}"] = dataframe[f"ema{val}"].pct_change()
+
+        # Past three volume mean
+        dataframe["volume_mean"] = np.mean(
+            [dataframe["volume"].shift(i) for i in range(3)]
+        )
+
+        print("====== datafame ======")
+        print(dataframe)
 
         return dataframe
 
@@ -165,7 +252,8 @@ class EmaSlopeStrategy(IStrategy):
                     > self.enter_long_ror.value
                 )
                 & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(1) > 0)
-                # & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(2) > 0)
+                & (dataframe["aroonup"] > dataframe["aroondown"])
+                & (dataframe["aroonup"] > self.enter_aroon_up.value)
                 & (dataframe["volume"] > 0)
             ),
             "enter_long",
@@ -178,7 +266,8 @@ class EmaSlopeStrategy(IStrategy):
                     < self.enter_short_ror.value
                 )
                 & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(1) < 0)
-                # & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(2) < 0)
+                & (dataframe["aroondown"] > dataframe["aroonup"])
+                & (dataframe["aroondown"] > self.enter_aroon_down.value)
                 & (dataframe["volume"] > 0)
             ),
             "enter_short",
@@ -190,11 +279,13 @@ class EmaSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (
-                    dataframe[f"ror_ema{self.ema_timeperiod.value}"]
-                    < self.exit_long_ror.value
+                    (
+                        dataframe[f"ror_ema{self.ema_timeperiod.value}"]
+                        < self.exit_long_ror.value
+                    )
+                    | (dataframe["aroonup"] < dataframe["aroondown"])
+                    | (dataframe["aroonup"] < self.exit_aroon_up.value)
                 )
-                # & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(1) < 0)
-                # & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(2) < 0)
                 & (dataframe["volume"] > 0)
             ),
             "exit_long",
@@ -203,11 +294,13 @@ class EmaSlopeStrategy(IStrategy):
         dataframe.loc[
             (
                 (
-                    dataframe[f"ror_ema{self.ema_timeperiod.value}"]
-                    > self.exit_short_ror.value
+                    (
+                        dataframe[f"ror_ema{self.ema_timeperiod.value}"]
+                        > self.exit_short_ror.value
+                    )
+                    | (dataframe["aroondown"] < dataframe["aroonup"])
+                    | (dataframe["aroondown"] < self.exit_aroon_down.value)
                 )
-                # & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(1) > 0)
-                # & (dataframe[f"ror_ema{self.ema_timeperiod.value}"].shift(2) > 0)
                 & (dataframe["volume"] > 0)
             ),
             "exit_short",
